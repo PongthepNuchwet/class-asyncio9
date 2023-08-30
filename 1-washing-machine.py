@@ -13,6 +13,7 @@ student_id = "6310301004"
 class MachineStatus(Enum):
     pressure = round(random.uniform(2000, 3000), 2)
     temperature = round(random.uniform(25.0, 40.0), 2)
+    speed = round(random.uniform(25.0, 40.0), 2)
     #
     # add more machine status
     #
@@ -66,10 +67,12 @@ async def CoroWashingMachine(w, client):
             await publish_message(w, client, 'app', 'get', status.name, status.value)
             await publish_message(w, client, 'app', 'get', "STATUS", "FINISHED")
 
-            maint = random.choice(list(MachineStatus))
+            maint = random.choice(list(MachineMaintStatus))
             await publish_message(w, client, 'app', 'get', maint.name, maint.value)
 
-            await publish_message(w, client, 'app', 'get', 'speed', '100')
+            sensor = random.choice(list(MachineStatus))
+
+            await publish_message(w, client, 'app', 'get', 'SPEED', '100')
 
             if maint.name == 'noise' and maint.value == 'noisy':
                 w.MACHINE_STATUS = 'OFF'
@@ -103,3 +106,33 @@ if sys.platform.lower() == "win32" or os.name.lower() == "nt":
     set_event_loop_policy(WindowsSelectorEventLoopPolicy())
 # Run your async application as usual
 asyncio.run(main())
+
+
+# Wed Aug 30 14:29:55 2023 - [SN-001] Waiting to start... 3.81 seconds.
+# Wed Aug 30 14:29:59 2023 - [SN-001] Waiting to start... 5.84 seconds.
+# Wed Aug 30 14:30:05 2023 - [SN-001] Waiting to start... 9.0 seconds.
+# Wed Aug 30 14:30:07 2023 - MQTT - [SN-001]:POWER => ON
+# Wed Aug 30 14:30:14 2023 - [SN-001] STATUS:START
+# Wed Aug 30 14:30:16 2023 - PUBLISH - [SN-001] - STATUS > START
+# Wed Aug 30 14:30:16 2023 - [SN-001] LID:OPEN
+# Wed Aug 30 14:30:17 2023 - MQTT - [SN-001]:STATUS => START
+# Wed Aug 30 14:30:18 2023 - PUBLISH - [SN-001] - LID > OPEN
+# Wed Aug 30 14:30:18 2023 - [SN-001] LID:CLOSE
+# Wed Aug 30 14:30:18 2023 - MQTT - [SN-001]:LID => OPEN
+# Wed Aug 30 14:30:20 2023 - PUBLISH - [SN-001] - LID > CLOSE
+# Wed Aug 30 14:30:20 2023 - [SN-001] pressure:2302.94
+# Wed Aug 30 14:30:20 2023 - MQTT - [SN-001]:LID => CLOSE
+# Wed Aug 30 14:30:22 2023 - PUBLISH - [SN-001] - pressure > 2302.94
+# Wed Aug 30 14:30:22 2023 - [SN-001] STATUS:FINISHED
+# Wed Aug 30 14:30:24 2023 - PUBLISH - [SN-001] - STATUS > FINISHED
+# Wed Aug 30 14:30:24 2023 - [SN-001] noise:quiet
+# Wed Aug 30 14:30:26 2023 - PUBLISH - [SN-001] - noise > quiet
+# Wed Aug 30 14:30:26 2023 - [SN-001] SPEED:100
+# Wed Aug 30 14:30:28 2023 - PUBLISH - [SN-001] - SPEED > 100
+# Wed Aug 30 14:30:28 2023 - [SN-001] Waiting to start... 2.45 seconds.
+# Wed Aug 30 14:30:31 2023 - [SN-001] Waiting to start... 9.94 seconds.
+# Wed Aug 30 14:30:41 2023 - [SN-001] Waiting to start... 0.41 seconds.
+# Wed Aug 30 14:30:41 2023 - [SN-001] Waiting to start... 7.6 seconds.
+# Wed Aug 30 14:30:49 2023 - [SN-001] Waiting to start... 0.84 seconds.
+# Wed Aug 30 14:30:49 2023 - [SN-001] Waiting to start... 2.19 seconds.
+# Wed Aug 30 14:30:52 2023 - [SN-001] Waiting to start... 7.64 seconds.
