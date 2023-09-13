@@ -78,15 +78,17 @@ async def publish_message(w, client, app, action, name, value):
     await client.publish(f"v1cdti/{app}/{action}/{student_id}/model-01/{w.SERIAL}", payload=json.dumps(payload))
 
 
-async def CoroWashingMachine(w: WashingMachine, client):
+async def CoroWashingMachine(w: WashingMachine, client: aiomqtt.Client, event: asyncio.Event):
     while True:
-        wait_next = round(10*random.random(), 2)
-        print(
-            f"{time.ctime()} - [{w.SERIAL}-{w.MACHINE_STATUS}] Waiting to start... {wait_next} seconds.")
-        await asyncio.sleep(wait_next)
+        # wait_next = round(10*random.random(), 2)
+        # print(
+        #     f"{time.ctime()} - [{w.SERIAL}-{w.MACHINE_STATUS}] Waiting to start... {wait_next} seconds.")
+        # await asyncio.sleep(wait_next)
 
         if w.MACHINE_STATUS == 'OFF':
-            continue
+            print(
+                f"{time.ctime()} - [{w.SERIAL}-{w.MACHINE_STATUS}] Waiting to start...")
+            await event.wait()
 
         if w.MACHINE_STATUS == 'READY':
             await publish_message(w, client, "hw", "get", "STATUS", "READY")
@@ -114,7 +116,10 @@ async def CoroWashingMachine(w: WashingMachine, client):
         if w.MACHINE_STATUS == 'FAULT':
             print(
                 f"{time.ctime()} - [{w.SERIAL}-{w.MACHINE_STATUS}] Waiting to clear fault...")
+            await event.wait()
 
+        if event.is_set():
+            event.clear()
             # fill water untill full level detected within 10 seconds if not full then timeout
 
             # heat water until temperature reach 30 celcius within 10 seconds if not reach 30 celcius then timeout
@@ -130,7 +135,7 @@ async def CoroWashingMachine(w: WashingMachine, client):
             # When washing is in FAULT state, wait until get FAULTCLEARED
 
 
-async def listen(w: WashingMachine, client: aiomqtt.Client):
+async def listen(w: WashingMachine, client: aiomqtt.Client, event: asyncio.Event):
     async with client.messages() as messages:
         await client.subscribe(f"v1cdti/hw/set/{student_id}/model-01/{w.SERIAL}")
         async for message in messages:
@@ -143,9 +148,14 @@ async def listen(w: WashingMachine, client: aiomqtt.Client):
                 match m_decode['name']:
                     case "STATUS":
                         w.MACHINE_STATUS = m_decode['value']
+                        if m_decode['value'] == 'READY':
+                            if not event.is_set():
+                                event.set()
                     case "FAULT":
                         if m_decode['value'] == "FAULTCLEARED":
                             w.MACHINE_STATUS = 'OFF'
+                            if not event.is_set():
+                                event.set()
                         else:
                             w.MACHINE_STATUS = "FAULT"
                             w.FAULT = m_decode['value']
@@ -172,8 +182,9 @@ async def listen(w: WashingMachine, client: aiomqtt.Client):
 
 async def main():
     w = WashingMachine(serial='SN-001')
+    event = asyncio.Event()
     async with aiomqtt.Client("broker.hivemq.com") as client:
-        await asyncio.gather(listen(w, client), CoroWashingMachine(w, client)
+        await asyncio.gather(listen(w, client, event), CoroWashingMachine(w, client, event)
                              )
 
 # Change to the "Selector" event loop if platform is Windows
