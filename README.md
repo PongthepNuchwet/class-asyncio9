@@ -35,3 +35,23 @@
 "name" : "TEMPERATUREREACHED",
 "value" : "REACHED"
 }
+
+{
+"action" : "set",
+"project" : "6310301004",
+"model" : "model-01",
+"serial" : "sn-01",
+"name" : "FAULT",
+"value" : "OUTOFBALANCE"
+}
+
+{
+"action" : "set",
+"project" : "6310301004",
+"model" : "model-01",
+"serial" : "sn-01",
+"name" : "FAULT",
+"value" : "MOTORFAILURE"
+}
+
+
