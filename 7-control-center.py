@@ -9,69 +9,6 @@ import time
 student_id = "6310301004"
 
 
-class MachineStatus(Enum):
-    pressure = round(random.uniform(2000, 3000), 2)
-    temperature = round(random.uniform(25.0, 40.0), 2)
-
-
-class MachineMaintStatus(Enum):
-    filter = random.choice(["clear", "clogged"])
-    noise = random.choice(["quiet", "noisy"])
-
-
-class WashingMachine:
-    def __init__(self, serial):
-        self.SERIAL = serial
-        self.Task = None
-
-        self.MACHINE_STATUS = 'OFF'
-        """START | READY | FILLWATER | HEATWATER | WASH | RINSE | SPIN | FAULT"""
-
-        self.FAULT = None
-        """TIMEOUT | OUTOFBALANCE | FAULTCLEARED | FAULTCLEARED | None"""
-
-        self.OPERATION = None
-        """DOORCLOSE | WATERFULLLEVEL | TEMPERATUREREACHED | COMPLETED"""
-
-        self.OPERATION_value = None
-        """" FULL """
-
-    async def Running(self):
-        print(
-            f"{time.ctime()} - [{self.SERIAL}-{self.MACHINE_STATUS}] START")
-        await asyncio.sleep(3600)
-
-    def nextState(self):
-        if self.MACHINE_STATUS == 'WASH':
-            self.MACHINE_STATUS = 'RINSE'
-        elif self.MACHINE_STATUS == 'RINSE':
-            self.MACHINE_STATUS = 'SPIN'
-        elif self.MACHINE_STATUS == 'SPIN':
-            self.MACHINE_STATUS = 'OFF'
-
-    async def Running_Task(self, client: aiomqtt.Client, invert: bool):
-        self.Task = asyncio.create_task(self.Running())
-        wait_coro = asyncio.wait_for(self.Task, timeout=10)
-        try:
-            await wait_coro
-        except asyncio.TimeoutError:
-            print(
-                f"{time.ctime()} - [{self.SERIAL}-{self.MACHINE_STATUS}] Timeout")
-            if not invert:
-                self.MACHINE_STATUS = 'FAULT'
-                self.FAULT = 'TIMEOUT'
-                await publish_message(self, client, "hw", "get", "STATUS", self.MACHINE_STATUS)
-                await publish_message(self, client, "hw", "get", "FAULT", self.FAULT)
-            else:
-                self.nextState()
-
-        except asyncio.CancelledError:
-            print(
-                f"{time.ctime()} - [{self.SERIAL}] Cancelled")
-
-    async def Cancel_Task(self):
-        self.Task.cancel()
-
 
 async def publish_message(SERIAL, client, app, action, name, value):
     payload = {
