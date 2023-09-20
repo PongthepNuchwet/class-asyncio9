@@ -54,4 +54,14 @@
 "value" : "MOTORFAILURE"
 }
 
+5-
+
+6-monitor-center
+SUB app/monitor/63/model-01/+
+
+7-
+
+SUB app/get/63/model/+
+
+10 วิ hw/get/63/model/
 

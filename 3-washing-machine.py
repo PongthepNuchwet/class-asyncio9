@@ -51,7 +51,7 @@ class WashingMachine:
 
     async def Running_Task(self, client: aiomqtt.Client, invert: bool):
         self.Task = asyncio.create_task(self.Running())
-        wait_coro = asyncio.wait_for(self.Task, timeout=10)
+        wait_coro = asyncio.wait_for(self.Task, timeout=20)
         try:
             await wait_coro
         except asyncio.TimeoutError:
@@ -74,7 +74,6 @@ class WashingMachine:
 
 
 async def publish_message(w, client, app, action, name, value):
-    print(f"{time.ctime()} - [{w.SERIAL}] {name}:{value}")
     payload = {
         "action": "get",
         "project": student_id,
@@ -96,24 +95,26 @@ async def CoroWashingMachine(w: WashingMachine, client: aiomqtt.Client, event: a
         # await asyncio.sleep(wait_next)
 
         if w.MACHINE_STATUS == 'OFF':
+            await publish_message(w, client, "app", "get", "STATUS", w.MACHINE_STATUS)
+
             print(
                 f"{time.ctime()} - [{w.SERIAL}-{w.MACHINE_STATUS}] Waiting to start...")
             await event.wait()
             event.clear()
 
         if w.MACHINE_STATUS == 'READY':
-            await publish_message(w, client, "hw", "get", "STATUS", "READY")
-            await publish_message(w, client, 'hw', 'get', 'LID', 'CLOSE')
+            await publish_message(w, client, "app", "get", "STATUS", "READY")
+            await publish_message(w, client, 'app', 'get', 'LID', 'CLOSE')
             w.MACHINE_STATUS = 'FILLWATER'
-            await publish_message(w, client, "hw", "get", "STATUS", "FILLWATER")
+            await publish_message(w, client, "app", "get", "STATUS", "FILLWATER")
             await w.Running_Task(client, invert=False)
 
         if w.MACHINE_STATUS == 'HEATWATER':
-            await publish_message(w, client, "hw", "get", "STATUS", "HEATWATER")
+            await publish_message(w, client, "app", "get", "STATUS", "HEATWATER")
             await w.Running_Task(client, invert=False)
 
         if w.MACHINE_STATUS in ['WASH', 'RINSE', 'SPIN']:
-            await publish_message(w, client, "hw", "get", "STATUS", w.MACHINE_STATUS)
+            await publish_message(w, client, "app", "get", "STATUS", w.MACHINE_STATUS)
             await w.Running_Task(client, invert=True)
 
         if w.MACHINE_STATUS == 'FAULT':
@@ -140,7 +141,7 @@ async def CoroWashingMachine(w: WashingMachine, client: aiomqtt.Client, event: a
 async def listen(w: WashingMachine, client: aiomqtt.Client, event: asyncio.Event):
     async with client.messages() as messages:
         await client.subscribe(f"v1cdti/hw/set/{student_id}/model-01/{w.SERIAL}")
-        await client.subscribe(f"v1cdti/app/get/{student_id}/model-01/")
+        await client.subscribe(f"v1cdti/hw/get/{student_id}/model-01/")
         async for message in messages:
             m_decode = json.loads(message.payload)
             if message.topic.matches(f"v1cdti/hw/set/{student_id}/model-01/{w.SERIAL}"):
@@ -173,12 +174,12 @@ async def listen(w: WashingMachine, client: aiomqtt.Client, event: asyncio.Event
                         if w.MACHINE_STATUS == 'HEATWATER' and m_decode['value'] == "REACHED":
                             await w.Cancel_Task()
                             w.MACHINE_STATUS = "WASH"
-            elif message.topic.matches(f"v1cdti/app/get/{student_id}/model-01/"):
+            elif message.topic.matches(f"v1cdti/hw/get/{student_id}/model-01/"):
                 await publish_message(w, client, "app", "monitor", "STATUS", w.MACHINE_STATUS)
 
 
 async def main():
-    n = 10
+    n = 5
     W = [WashingMachine(serial=f'SN-00{i+1}') for i in range(n)]
     Events = [asyncio.Event() for i in range(n)]
     async with aiomqtt.Client("broker.hivemq.com") as client:
